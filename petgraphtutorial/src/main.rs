@@ -204,7 +204,7 @@ fn main() {
     labeled_graph();
     undirected_graph();
     visualize_graph();
-    
+
     // Alternative graph types
     println!("\n----\n");
     graph_map();
