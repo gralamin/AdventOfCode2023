@@ -11,6 +11,7 @@ cp day01/Makefile $day/
 touch $day/README.md
 touch $day/input
 touch $day/src/lib.rs
+make format
 git add $day
 git commit -m "$day: Added template"
 ```
