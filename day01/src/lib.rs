@@ -97,7 +97,7 @@ fn extract_numbers_and_number_words(string_list: &Vec<String>) -> Vec<Vec<String
             }
 
             // Look at remaining characters, check if the current front is a number word
-            let s = String::from_iter(&chars[i..chars.len()]);
+            let s = String::from_iter(&chars[index..chars.len()]);
             for d in digits.iter() {
                 if s.starts_with(d) {
                     found.push(d.to_string());
