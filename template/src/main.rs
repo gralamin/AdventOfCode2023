@@ -1,6 +1,6 @@
-use day03::load_no_blanks;
-use day03::puzzle_a;
-use day03::puzzle_b;
+use TEMPLATE::load_no_blanks;
+use TEMPLATE::puzzle_a;
+use TEMPLATE::puzzle_b;
 
 fn main() {
     let filename = "input";
