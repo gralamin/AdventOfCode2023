@@ -5,12 +5,11 @@ Advent of Code for 2023 - https://adventofcode.com/2023
 
 Per day, remember to:
 ```
-export day=day03
+export day=day04
 cargo new $day
 cp day01/Makefile $day/
-touch $day/README.md
-touch $day/input
-touch $day/src/lib.rs
+cp -r template/* $day/
+find $day -type f -exec sed -i "s/TEMPLATE/$day/g" {} +
 make format
 git add $day
 git commit -m "$day: Added template"
