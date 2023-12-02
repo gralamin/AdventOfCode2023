@@ -116,6 +116,39 @@ fn game_possible_max_cubes(red: u32, green: u32, blue: u32, game: &Game) -> bool
         .all(|b| b.red <= red && b.green <= green && b.blue <= blue);
 }
 
+fn game_min_cube_count(game: &Game) -> BallCount {
+    let max_red = game.shown.iter().map(|b| b.red).max().unwrap();
+    let max_blue = game.shown.iter().map(|b| b.blue).max().unwrap();
+    let max_green = game.shown.iter().map(|b| b.green).max().unwrap();
+    return BallCount {
+        red: max_red,
+        blue: max_blue,
+        green: max_green,
+    };
+}
+
+fn ball_count_power(b: BallCount) -> u32 {
+    return b.red * b.blue * b.green;
+}
+
+/// Get sum of powers of games, the power is the minimum count multipled together.
+/// ```
+/// let vec1: Vec<String> = vec![
+///     "Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green",
+///     "Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue",
+///     "Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red",
+///     "Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red",
+///     "Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green"
+/// ].iter().map(|s| s.to_string()).collect();
+/// assert_eq!(day02::puzzle_b(&vec1), 2286);
+/// ```
 pub fn puzzle_b(string_list: &Vec<String>) -> usize {
-    return 1;
+    let games: Vec<Game> = parse_games(string_list);
+    return games
+        .iter()
+        .map(|game| game_min_cube_count(game))
+        .map(|count| ball_count_power(count))
+        .sum::<u32>()
+        .try_into()
+        .unwrap();
 }
