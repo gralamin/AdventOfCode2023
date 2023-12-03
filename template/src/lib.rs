@@ -7,7 +7,7 @@ pub use filelib::load_no_blanks;
 /// let vec1: Vec<String> = vec![
 ///     "foo"
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day02::puzzle_a(&vec1), 0);
+/// assert_eq!(TEMPLATE::puzzle_a(&vec1), 0);
 /// ```
 pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
     return 0;
@@ -18,7 +18,7 @@ pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
 /// let vec1: Vec<String> = vec![
 ///     "foo"
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day02::puzzle_b(&vec1), 0);
+/// assert_eq!(TEMPLATE::puzzle_b(&vec1), 0);
 /// ```
 pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
     return 0;
