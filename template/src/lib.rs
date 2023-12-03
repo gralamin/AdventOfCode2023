@@ -9,7 +9,7 @@ pub use filelib::load_no_blanks;
 /// ].iter().map(|s| s.to_string()).collect();
 /// assert_eq!(TEMPLATE::puzzle_a(&vec1), 0);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
+pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
     return 0;
 }
 
