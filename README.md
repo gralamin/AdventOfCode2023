@@ -9,7 +9,7 @@ export day=day04
 cargo new $day
 cp day01/Makefile $day/
 cp -r template/* $day/
-find $day -type f -exec sed -i "s/TEMPLATE/$day/g" {} +
+find $day -type f -exec sed -i "s/template/$day/g" {} +
 make format
 git add $day
 git commit -m "$day: Added template"

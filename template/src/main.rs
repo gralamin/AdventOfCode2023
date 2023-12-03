@@ -1,6 +1,6 @@
-use TEMPLATE::load_no_blanks;
-use TEMPLATE::puzzle_a;
-use TEMPLATE::puzzle_b;
+use template::load_no_blanks;
+use template::puzzle_a;
+use template::puzzle_b;
 
 fn main() {
     let filename = "input";
