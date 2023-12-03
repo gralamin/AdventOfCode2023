@@ -23,3 +23,18 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
 pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
     return 0;
 }
+
+/// Delete this after making the template
+/// ```
+/// let vec1: Vec<u32> = vec![];
+/// let vec2: Vec<u32> = vec![1];
+/// assert_eq!(TEMPLATE::coverage_workaround(&vec1), 1);
+/// assert_eq!(TEMPLATE::coverage_workaround(&vec2), 2);
+/// ```
+pub fn coverage_workaround(a: &Vec<u32>) -> u32 {
+    if a.len() == 0 {
+        return 1;
+    } else {
+        return 2;
+    }
+}
