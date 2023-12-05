@@ -133,7 +133,7 @@ struct Almanac {
     humidity_to_location: RangeMap,
 }
 
-fn parse_almanac(string_list: &Vec<Vec<String>>) -> Almanac {
+fn parse_almanac(string_list: &Vec<Vec<String>>, parse_seed_range: bool) -> Almanac {
     let mut to_plant: Vec<IdNum> = vec![];
     let mut seed_to_soil: Option<RangeMap> = None;
     let mut soil_to_fertilizer: Option<RangeMap> = None;
@@ -230,12 +230,34 @@ fn parse_almanac(string_list: &Vec<Vec<String>>) -> Almanac {
         } else {
             // We are initial seeds
             let (_, seed_nums) = first_line.split_once("seeds: ").unwrap();
-            for num in seed_nums.split(" ") {
-                if num.len() == 0 {
-                    continue;
+            if parse_seed_range {
+                let mut range_start = 0;
+                let mut range_end = 0;
+                for num in seed_nums.split(" ") {
+                    if num.len() == 0 {
+                        continue;
+                    }
+                    let as_num: IdNum = num.parse().unwrap();
+                    // initial condition
+                    if range_start == 0 && range_end == 0 {
+                        range_start = as_num;
+                        continue;
+                    }
+                    range_end = range_start + as_num;
+                    for s in range_start..range_end {
+                        to_plant.push(s);
+                    }
+                    range_start = 0;
+                    range_end = 0;
                 }
-                let as_num: IdNum = num.parse().unwrap();
-                to_plant.push(as_num);
+            } else {
+                for num in seed_nums.split(" ") {
+                    if num.len() == 0 {
+                        continue;
+                    }
+                    let as_num: IdNum = num.parse().unwrap();
+                    to_plant.push(as_num);
+                }
             }
         }
     }
@@ -273,7 +295,7 @@ fn almanac_to_locations(alm: &Almanac) -> Vec<IdNum> {
 /// assert_eq!(day05::puzzle_a(&input), 35);
 /// ```
 pub fn puzzle_a(string_list: &Vec<Vec<String>>) -> IdNum {
-    let alm = parse_almanac(string_list);
+    let alm = parse_almanac(string_list, false);
     let locations = almanac_to_locations(&alm);
     return *locations.iter().min().unwrap();
 }
@@ -281,8 +303,10 @@ pub fn puzzle_a(string_list: &Vec<Vec<String>>) -> IdNum {
 /// Foo
 /// ```
 /// let input = day05::example_input();
-/// assert_eq!(day05::puzzle_b(&input), 0);
+/// assert_eq!(day05::puzzle_b(&input), 46);
 /// ```
 pub fn puzzle_b(string_list: &Vec<Vec<String>>) -> IdNum {
-    return 0;
+    let alm = parse_almanac(string_list, true);
+    let locations = almanac_to_locations(&alm);
+    return *locations.iter().min().unwrap();
 }
