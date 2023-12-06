@@ -119,20 +119,93 @@ impl RangeMap {
         return id;
     }
 
-    fn convert_back(&self, id: IdNum) -> IdNum {
-        // convert backwards.
-        for (index, (start_id, end_id)) in self
-            .dst_start_ids
-            .iter()
-            .zip(self.dst_end_ids.clone())
-            .enumerate()
-        {
-            if id >= *start_id && id <= end_id {
-                let offset = id - *start_id;
-                return self.src_start_ids[index] + offset;
+    fn convert_range(&self, start: IdNum, end: IdNum) -> (Vec<IdNum>, Vec<IdNum>) {
+        // possiblities
+        //               R: |------------|
+        //          |----------| [1]
+        //                      |--| [2]
+        //                             |------| [3]
+        //          |--| [4]
+        //                                   |--| [4]
+        //          |-------------------------------| [5]
+        let mut start_remaining = vec![start];
+        let mut end_remaining = vec![end];
+        let mut mapped_start = vec![];
+        let mut mapped_end = vec![];
+
+        while let Some(s_r) = start_remaining.pop() {
+            let e_r = end_remaining.pop().unwrap();
+            let mut map_found = false;
+
+            for (index, (start_id, end_id)) in self
+                .src_start_ids
+                .iter()
+                .zip(self.src_end_ids.clone())
+                .enumerate()
+            {
+                if e_r < *start_id || s_r > end_id {
+                    // We are outside the range entirely [4]
+                    continue;
+                }
+                if s_r >= *start_id && e_r <= end_id {
+                    // We are inside the range [2], just map directly
+                    map_found = true;
+                    let offset = s_r - *start_id;
+                    let end_offset = e_r - *start_id;
+                    let m_s = self.dst_start_ids[index] + offset;
+                    let m_e = self.dst_start_ids[index] + end_offset;
+                    mapped_start.push(m_s);
+                    mapped_end.push(m_e);
+                    break;
+                }
+                if s_r < *start_id && e_r > end_id {
+                    // We are a larger range
+                    map_found = true;
+                    let left_end = *start_id - 1;
+                    let right_start = end_id + 1;
+                    let m_s = self.dst_start_ids[index];
+                    let m_e = self.dst_end_ids[index];
+                    start_remaining.push(s_r);
+                    start_remaining.push(right_start);
+                    end_remaining.push(left_end);
+                    end_remaining.push(e_r);
+                    mapped_start.push(m_s);
+                    mapped_end.push(m_e);
+                    break;
+                }
+                if s_r < *start_id {
+                    // We extend into the range [1]
+                    map_found = true;
+                    let left_end = *start_id - 1;
+                    let end_offset = e_r - start_id;
+                    let m_s = self.dst_start_ids[index];
+                    let m_e = self.dst_start_ids[index] + end_offset;
+                    mapped_start.push(m_s);
+                    mapped_end.push(m_e);
+                    start_remaining.push(s_r);
+                    end_remaining.push(left_end);
+                    break;
+                }
+                // One possiblty left, we extend past the range [3].
+                map_found = true;
+                let right_start = end_id + 1;
+                let offset = s_r - *start_id;
+                let m_s = self.dst_start_ids[index] + offset;
+                let m_e = self.dst_end_ids[index];
+                mapped_start.push(m_s);
+                mapped_end.push(m_e);
+                start_remaining.push(right_start);
+                end_remaining.push(e_r);
+                break;
+            }
+
+            if !map_found {
+                // These weren't found, so we just map this range to the same number
+                mapped_end.push(e_r);
+                mapped_start.push(s_r);
             }
         }
-        return id;
+        return (mapped_start, mapped_end);
     }
 }
 
@@ -446,26 +519,94 @@ fn parse_almanac_range(string_list: &Vec<Vec<String>>) -> AlmanacRange {
 /// ```
 pub fn puzzle_b(string_list: &Vec<Vec<String>>) -> IdNum {
     let alm = parse_almanac_range(string_list);
-    // This is from running once and getting the wrong answer, which was too high.
-    // This lets me avoid doing an infinite loop.
-    let known_max = 6472061;
-    for cur in 0..=known_max {
-        // we have a possible location, convert backwards to see if its in the range.
-        // We start with location
-        let hum = alm.humidity_to_location.convert_back(cur);
-        let temp = alm.temperature_to_humidity.convert_back(hum);
-        let light = alm.light_to_temperature.convert_back(temp);
-        let water = alm.water_to_light.convert_back(light);
-        let fert = alm.fertilizer_to_water.convert_back(water);
-        let soil = alm.soil_to_fertilizer.convert_back(fert);
-        let seed = alm.seed_to_soil.convert_back(soil);
-        for (start_id, end_id) in alm.to_plant_start.iter().zip(alm.to_plant_end.clone()) {
-            if seed >= *start_id && seed <= end_id {
-                // I have an off by 1 error and I don't know why...
-                // but its late, fix tomorrow.
-                return cur - 1;
-            }
-        }
+    let mut current_range_starts: Vec<IdNum> = alm.to_plant_start.clone();
+    let mut current_range_ends: Vec<IdNum> = alm.to_plant_end.clone();
+    let mut next_range_s = vec![];
+    let mut next_range_e = vec![];
+
+    while let Some(cur_start) = current_range_starts.pop() {
+        let cur_end = current_range_ends.pop().unwrap();
+        let (next_starts, next_ends) = alm.seed_to_soil.convert_range(cur_start, cur_end);
+        assert_eq!(next_starts.len(), next_ends.len());
+        next_range_s.extend(next_starts);
+        next_range_e.extend(next_ends);
     }
-    return 0;
+    current_range_starts = next_range_s;
+    current_range_ends = next_range_e;
+    next_range_s = vec![];
+    next_range_e = vec![];
+
+    while let Some(cur_start) = current_range_starts.pop() {
+        let cur_end = current_range_ends.pop().unwrap();
+        let (next_starts, next_ends) = alm.soil_to_fertilizer.convert_range(cur_start, cur_end);
+        assert_eq!(next_starts.len(), next_ends.len());
+        next_range_s.extend(next_starts);
+        next_range_e.extend(next_ends);
+    }
+    current_range_starts = next_range_s;
+    current_range_ends = next_range_e;
+    next_range_s = vec![];
+    next_range_e = vec![];
+
+    while let Some(cur_start) = current_range_starts.pop() {
+        let cur_end = current_range_ends.pop().unwrap();
+        let (next_starts, next_ends) = alm.fertilizer_to_water.convert_range(cur_start, cur_end);
+        assert_eq!(next_starts.len(), next_ends.len());
+        next_range_s.extend(next_starts);
+        next_range_e.extend(next_ends);
+    }
+    current_range_starts = next_range_s;
+    current_range_ends = next_range_e;
+    next_range_s = vec![];
+    next_range_e = vec![];
+
+    while let Some(cur_start) = current_range_starts.pop() {
+        let cur_end = current_range_ends.pop().unwrap();
+        let (next_starts, next_ends) = alm.water_to_light.convert_range(cur_start, cur_end);
+        assert_eq!(next_starts.len(), next_ends.len());
+        next_range_s.extend(next_starts);
+        next_range_e.extend(next_ends);
+    }
+    current_range_starts = next_range_s;
+    current_range_ends = next_range_e;
+    next_range_s = vec![];
+    next_range_e = vec![];
+
+    while let Some(cur_start) = current_range_starts.pop() {
+        let cur_end = current_range_ends.pop().unwrap();
+        let (next_starts, next_ends) = alm.light_to_temperature.convert_range(cur_start, cur_end);
+        assert_eq!(next_starts.len(), next_ends.len());
+        next_range_s.extend(next_starts);
+        next_range_e.extend(next_ends);
+    }
+    current_range_starts = next_range_s;
+    current_range_ends = next_range_e;
+    next_range_s = vec![];
+    next_range_e = vec![];
+
+    while let Some(cur_start) = current_range_starts.pop() {
+        let cur_end = current_range_ends.pop().unwrap();
+        let (next_starts, next_ends) = alm
+            .temperature_to_humidity
+            .convert_range(cur_start, cur_end);
+        assert_eq!(next_starts.len(), next_ends.len());
+        next_range_s.extend(next_starts);
+        next_range_e.extend(next_ends);
+    }
+    current_range_starts = next_range_s;
+    current_range_ends = next_range_e;
+    next_range_s = vec![];
+    next_range_e = vec![];
+
+    while let Some(cur_start) = current_range_starts.pop() {
+        let cur_end = current_range_ends.pop().unwrap();
+        let (next_starts, next_ends) = alm.humidity_to_location.convert_range(cur_start, cur_end);
+        assert_eq!(next_starts.len(), next_ends.len());
+        next_range_s.extend(next_starts);
+        next_range_e.extend(next_ends);
+    }
+    current_range_starts = next_range_s;
+
+    // The starts are lower then the ends, so we can just return the lowest start.
+    return *current_range_starts.iter().min().unwrap();
 }
