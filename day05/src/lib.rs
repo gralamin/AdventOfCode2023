@@ -86,12 +86,12 @@ impl RangeMap {
         let src_ends = src_starts
             .iter()
             .zip(range_size.clone())
-            .map(|(src_id, cur_range)| src_id + cur_range)
+            .map(|(src_id, cur_range)| src_id + cur_range - 1)
             .collect();
         let dst_ends = dst_starts
             .iter()
             .zip(range_size)
-            .map(|(dst_id, cur_range)| dst_id + cur_range)
+            .map(|(dst_id, cur_range)| dst_id + cur_range - 1)
             .collect();
         return RangeMap {
             src: src_type,
@@ -478,23 +478,21 @@ fn parse_almanac_range(string_list: &Vec<Vec<String>>) -> AlmanacRange {
         } else {
             // We are initial seeds
             let (_, seed_nums) = first_line.split_once("seeds: ").unwrap();
-            let mut range_start = 0;
-            let mut range_end = 0;
+            let mut range_start: Option<IdNum> = None;
             for num in seed_nums.split(" ") {
                 if num.len() == 0 {
                     continue;
                 }
                 let as_num: IdNum = num.parse().unwrap();
                 // initial condition
-                if range_start == 0 && range_end == 0 {
-                    range_start = as_num;
+                if range_start == None {
+                    range_start = Some(as_num);
                     continue;
                 }
-                range_end = range_start + as_num - 1;
-                to_plant.push(range_start);
+                let range_end = range_start.unwrap() + as_num - 1;
+                to_plant.push(range_start.unwrap());
                 to_plant_ends.push(range_end);
-                range_start = 0;
-                range_end = 0;
+                range_start = None;
             }
         }
     }
