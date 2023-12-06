@@ -2,16 +2,19 @@ extern crate filelib;
 
 pub use filelib::load_no_blanks;
 
+type IntValue = u64;
+type MathValue = f64;
+
 #[derive(PartialEq, Debug, Copy, Clone)]
 struct Race {
-    distance: u32,
-    time: u32,
+    distance: IntValue,
+    time: IntValue,
 }
 
 fn parse_races(string_list: &Vec<String>) -> Vec<Race> {
     let mut result: Vec<Race> = vec![];
-    let mut times: Vec<u32> = vec![];
-    let mut distances: Vec<u32> = vec![];
+    let mut times: Vec<IntValue> = vec![];
+    let mut distances: Vec<IntValue> = vec![];
     let mut iter = string_list.iter();
     let time_line = iter.next().unwrap();
     let distance_line = iter.next().unwrap();
@@ -21,7 +24,7 @@ fn parse_races(string_list: &Vec<String>) -> Vec<Race> {
         if t.len() == 0 {
             continue;
         }
-        let v: u32 = t.trim().parse().unwrap();
+        let v: IntValue = t.trim().parse().unwrap();
         times.push(v);
     }
 
@@ -29,7 +32,7 @@ fn parse_races(string_list: &Vec<String>) -> Vec<Race> {
         if d.len() == 0 {
             continue;
         }
-        let v: u32 = d.trim().parse().unwrap();
+        let v: IntValue = d.trim().parse().unwrap();
         distances.push(v);
     }
 
@@ -43,11 +46,46 @@ fn parse_races(string_list: &Vec<String>) -> Vec<Race> {
     return result;
 }
 
+fn parse_as_one_race(string_list: &Vec<String>) -> Race {
+    let mut iter = string_list.iter();
+    let time_line = iter.next().unwrap();
+    let distance_line = iter.next().unwrap();
+    let (_, time_nums) = time_line.split_once("Time:").unwrap();
+    let (_, distance_nums) = distance_line.split_once("Distance:").unwrap();
+    let mut time_string: String = "".to_string();
+    let mut distance_string: String = "".to_string();
+    //println!("time_nums {}", time_nums);
+    for t in time_nums.trim().split(" ") {
+        if t.len() == 0 {
+            continue;
+        }
+        time_string = time_string + t.trim();
+        //println!("Time so far {}", time_string);
+    }
+    let time = time_string.parse().unwrap();
+
+    //println!("distance_nums {}", distance_nums);
+    for d in distance_nums.trim().split(" ") {
+        if d.len() == 0 {
+            continue;
+        }
+        distance_string = distance_string + d.trim();
+        //println!("Time so far {}", distance_string);
+    }
+    let distance = distance_string.parse().unwrap();
+
+    //println!("Parsed Race d: {}, t: {}", distance, time);
+    return Race {
+        distance: distance,
+        time: time,
+    };
+}
+
 // You can hold to charge
 // release to move. (Including the turn you release!)
 // you move faster if button held longer (Increase velocity by 1)
 // start at 0 distance per time increment
-fn get_solutions_greater_distance(min_distance: u32, time: u32) -> u32 {
+fn get_solutions_greater_distance(min_distance: IntValue, time: IntValue) -> IntValue {
     // Its literally impossible to score 9 on their example, so analyze this closer.
     // We can think of this geometrically
     // If we consider distance as the y value on a graph, and hold time as x
@@ -69,19 +107,19 @@ fn get_solutions_greater_distance(min_distance: u32, time: u32) -> u32 {
     // 0.5 * (sqrt(time^2 - 4 * distance) + time)
     // Thats pretty easy to compute.
 
-    let time_as_f32: f32 = time as f32;
+    let time_as_math: MathValue = time as MathValue;
 
     // 7^2 - 4*9 = 49 - 36 = 13
-    let quadratic_mid: f32 = (time.pow(2)) as f32 - (4_f32 * min_distance as f32);
+    let quadratic_mid: MathValue = (time.pow(2)) as MathValue - (4.0 * min_distance as MathValue);
 
     // sqrt(13) = 3.605
-    let square_root_mid: f32 = f32::sqrt(quadratic_mid);
+    let square_root_mid: MathValue = MathValue::sqrt(quadratic_mid);
 
     // 1.697
-    let ans_one: f32 = 0.5 * (time_as_f32 - square_root_mid);
+    let ans_one: MathValue = 0.5 * (time_as_math - square_root_mid);
 
     // 5.302
-    let ans_two: f32 = 0.5 * (square_root_mid + time_as_f32);
+    let ans_two: MathValue = 0.5 * (square_root_mid + time_as_math);
 
     // So ceiling ans_one
     // floor ans_two
@@ -96,18 +134,18 @@ fn get_solutions_greater_distance(min_distance: u32, time: u32) -> u32 {
     let ans_two_floor = ans_two.floor();
 
     // normally just add one
-    let mut range_offset: f32 = 1_f32;
+    let mut range_offset: MathValue = 1.0;
 
     if ans_one_ceil == ans_one {
         // If already an integer, add one less
-        range_offset -= 1_f32;
+        range_offset -= 1.0;
     }
     if ans_two_floor == ans_two {
         // If already an integer, add one less
-        range_offset -= 1_f32;
+        range_offset -= 1.0;
     }
 
-    return (ans_two_floor - ans_one_ceil + range_offset) as u32;
+    return (ans_two_floor - ans_one_ceil + range_offset) as IntValue;
 }
 
 /// Deterimine how many ways you could beat the record of each race, then multiply together.
@@ -118,7 +156,7 @@ fn get_solutions_greater_distance(min_distance: u32, time: u32) -> u32 {
 /// ].iter().map(|s| s.to_string()).collect();
 /// assert_eq!(day06::puzzle_a(&vec1), 288);
 /// ```
-pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
+pub fn puzzle_a(string_list: &Vec<String>) -> IntValue {
     let races = parse_races(string_list);
     return races
         .iter()
@@ -126,16 +164,18 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
         .product();
 }
 
-/// Foo
+/// As above, but treat time/distance as one long number string (ignore the spaces)
+/// so we just have one simple one to solve.
 /// ```
 /// let vec1: Vec<String> = vec![
 ///    "Time:      7  15   30",
 ///    "Distance:  9  40  200"
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day06::puzzle_b(&vec1), 0);
+/// assert_eq!(day06::puzzle_b(&vec1), 71503);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
-    return 0;
+pub fn puzzle_b(string_list: &Vec<String>) -> IntValue {
+    let race = parse_as_one_race(string_list);
+    return get_solutions_greater_distance(race.distance, race.time);
 }
 
 #[cfg(test)]
@@ -147,5 +187,6 @@ mod tests {
         assert_eq!(4, get_solutions_greater_distance(9, 7));
         assert_eq!(8, get_solutions_greater_distance(40, 15));
         assert_eq!(9, get_solutions_greater_distance(200, 30));
+        assert_eq!(71503, get_solutions_greater_distance(940200, 71530));
     }
 }
