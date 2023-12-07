@@ -11,6 +11,7 @@ cp day01/Makefile $day/
 cp -r template/* $day/
 find $day -type f -exec sed -i "s/template/$day/g" {} +
 make format
+find . -iname "template.day" -delete
 git add $day
 git commit -m "$day: Added template"
 ```
