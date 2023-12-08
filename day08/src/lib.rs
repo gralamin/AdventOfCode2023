@@ -4,6 +4,7 @@ pub use filelib::load_no_blanks;
 use petgraph::graph::Graph;
 use petgraph::visit::EdgeRef;
 use std::collections::HashSet;
+use num::Integer;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
 enum Direction {
@@ -11,7 +12,7 @@ enum Direction {
     Right,
 }
 
-fn direction_to_cost(d: Direction) -> u32 {
+fn direction_to_cost(d: Direction) -> u64 {
     match d {
         Direction::Left => 0,
         Direction::Right => 1,
@@ -19,7 +20,7 @@ fn direction_to_cost(d: Direction) -> u32 {
 }
 
 // Return (instructions, adjacency list)
-fn parse_instructions(string_list: &Vec<String>) -> (Vec<Direction>, Graph<&str, u32>) {
+fn parse_instructions(string_list: &Vec<String>) -> (Vec<Direction>, Graph<&str, u64>) {
     let mut iter = string_list.iter();
     let instruction_line = iter.next().unwrap();
     let mut directions: Vec<Direction> = vec![];
@@ -80,7 +81,7 @@ fn parse_instructions(string_list: &Vec<String>) -> (Vec<Direction>, Graph<&str,
 /// ].iter().map(|s| s.to_string()).collect();
 /// assert_eq!(day08::puzzle_a(&vec1), 6);
 /// ```
-pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
+pub fn puzzle_a(string_list: &Vec<String>) -> u64 {
     let (ins, graph) = parse_instructions(string_list);
     let origin = graph.node_indices().find(|i| graph[*i] == "AAA").unwrap();
     let end = graph.node_indices().find(|i| graph[*i] == "ZZZ").unwrap();
@@ -104,13 +105,45 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
     return count;
 }
 
-/// Foo
+/// Follow all the paths simultaneously. All starting nodes start with A.
+/// This is a Lowest common multiple.
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///    "LR",
+///    "11A = (11B, XXX)",
+///    "11B = (XXX, 11Z)",
+///    "11Z = (11B, XXX)",
+///    "22A = (22B, XXX)",
+///    "22B = (22C, 22C)",
+///    "22C = (22Z, 22Z)",
+///    "22Z = (22B, 22B)",
+///    "XXX = (XXX, XXX)",
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day08::puzzle_b(&vec1), 0);
+/// assert_eq!(day08::puzzle_b(&vec1), 6);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
-    return 0;
+pub fn puzzle_b(string_list: &Vec<String>) -> u64 {
+    let (ins, graph) = parse_instructions(string_list);
+    let mut path_amounts = vec![];
+    for origin in graph.node_indices().filter(|i| graph[*i].ends_with("A")) {
+        let mut cur_node = origin;
+        let mut count = 0;
+        for dir in ins.iter().cycle() {
+            if graph[cur_node].ends_with("Z") {
+                break;
+            }
+            count += 1;
+            let cur_cost = direction_to_cost(*dir);
+    
+            for e in graph.edges(cur_node) {
+                if *e.weight() == cur_cost {
+                    // Found our edge, traverse
+                    cur_node = e.target();
+                    break;
+                }
+            }
+        }
+        path_amounts.push(count);
+    }
+
+    return path_amounts.into_iter().reduce(|a, b| a.lcm(&b)).unwrap();
 }
