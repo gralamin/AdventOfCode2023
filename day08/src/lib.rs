@@ -1,10 +1,10 @@
 extern crate filelib;
 
 pub use filelib::load_no_blanks;
+use num::Integer;
 use petgraph::graph::Graph;
 use petgraph::visit::EdgeRef;
 use std::collections::HashSet;
-use num::Integer;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
 enum Direction {
@@ -133,7 +133,7 @@ pub fn puzzle_b(string_list: &Vec<String>) -> u64 {
             }
             count += 1;
             let cur_cost = direction_to_cost(*dir);
-    
+
             for e in graph.edges(cur_node) {
                 if *e.weight() == cur_cost {
                     // Found our edge, traverse
