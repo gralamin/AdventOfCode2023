@@ -51,3 +51,12 @@ extern crate my_lib;
 * `filelib` - A library for common file operations needed in advent of code. Most notably `load_as_ints`, which is used to load input that is just numbers per line.
 * `mathlib` - Math operations and functions I might need later.
 * `gridlib` - Represents a grid, a common pattern.
+
+
+# Copyright of Advent of Code
+It has been asked to not include inputs, or puzzle texts in this repo. This is the command to clean up this information.
+
+```
+git filter-branch -f —tree-filter 'rm -rf day*/input' HEAD
+git filter-branch -f —tree-filter 'rm -rf day*/README.md' HEAD
+```
