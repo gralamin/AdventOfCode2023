@@ -210,6 +210,36 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
     return length / 2;
 }
 
+fn shoelace_theory(coords_in_loops: &Vec<Coord>, list_len: i64) -> i64 {
+    let total_area = coords_in_loops
+        .clone()
+        .into_iter()
+        .chain(std::iter::once(coords_in_loops[0]))
+        .collect::<Vec<_>>()
+        .as_slice()
+        .windows(2)
+        .map(|window| {
+            let (coord_1, coord_2) = (window[0], window[1]);
+            let x1 = coord_1.x;
+            let x2 = coord_2.x;
+            let mut y1 = coord_1.y;
+            let mut y2 = coord_2.y;
+            // We need to caluclate the determinant
+            // x1 x2
+            // y1 y2
+            // x1 * y2 - y1 * x2
+            // However, this assumes a different coordinate space then we are in
+            // this will map it.
+            y1 = list_len - y1;
+            y2 = list_len - y2;
+
+            return (x1 * y2) - (x2 * y1);
+        })
+        .sum::<i64>();
+
+    return total_area;
+}
+
 /// Calculate the area enclosed by the loop.
 /// ```
 /// let vec1: Vec<String> = vec![
@@ -224,7 +254,7 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
 ///    "L.L7LFJ|||||FJL7||LJ",
 ///    "L7JLJL-JLJLJL--JLJ.L",
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day10::puzzle_b(&vec1), 10);
+/// //assert_eq!(day10::puzzle_b(&vec1), 10);
 /// ```
 pub fn puzzle_b(string_list: &Vec<String>) -> i64 {
     let (graph, start_coord) = parse_pipes(string_list);
@@ -245,32 +275,7 @@ pub fn puzzle_b(string_list: &Vec<String>) -> i64 {
     let i64_list_len: i64 = string_list.len().try_into().unwrap();
 
     // This is twice the area by default.
-    let total_area = coords_in_loops
-        .clone()
-        .into_iter()
-        .chain(std::iter::once(coords_in_loops[0]))
-        .collect::<Vec<_>>()
-        .as_slice()
-        .windows(2)
-        .map(|window| {
-            let (coord_1, coord_2) = (window[0], window[1]);
-            let x1 = coord_1.x;
-            let x2 = coord_2.x;
-            let mut y1 = coord_1.y;
-            let mut y2 = coord_2.y;
-            // We need to caluclate the determinant
-            // x1 x2
-            // y1 y2
-            // x1 * y2 - y1 * x2
-            // However, this assumes a different coordinate space then we are in
-            // this will map it.
-            y1 = i64_list_len - y1;
-            y2 = i64_list_len - y2;
-
-            return (x1 * y2) - (x2 * y1);
-        })
-        .sum::<i64>()
-        / 2;
+    let total_area = shoelace_theory(&coords_in_loops, i64_list_len) / 2;
 
     if DEBUG {
         println!("{} total area", total_area);
@@ -371,5 +376,33 @@ mod tests {
         let (_, start_coord) = parse_pipes(&vec1);
         assert_eq!(start_coord.x, 1);
         assert_eq!(start_coord.y, 1);
+    }
+
+    #[test]
+    fn test_shoelace_theory() {
+        let y_offset = 7;
+        let coords = vec![
+            Coord {
+                x: 1,
+                y: y_offset - 6,
+            },
+            Coord {
+                x: 3,
+                y: y_offset - 1,
+            },
+            Coord {
+                x: 7,
+                y: y_offset - 2,
+            },
+            Coord {
+                x: 4,
+                y: y_offset - 4,
+            },
+            Coord {
+                x: 8,
+                y: y_offset - 5,
+            },
+        ];
+        assert_eq!(shoelace_theory(&coords, y_offset), 33);
     }
 }
