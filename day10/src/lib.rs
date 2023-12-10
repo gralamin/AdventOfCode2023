@@ -1,22 +1,20 @@
 extern crate filelib;
 
 pub use filelib::load_no_blanks;
-use petgraph::dot::Dot;
 use petgraph::graph::Graph;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::Bfs;
-use petgraph::visit::EdgeRef;
+use petgraph::visit::Dfs;
 use petgraph::Directed;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::collections::VecDeque;
 
 const DEBUG: bool = false;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
 struct Coord {
-    x: i32,
-    y: i32,
+    x: i64,
+    y: i64,
 }
 
 impl std::fmt::Display for Coord {
@@ -43,7 +41,7 @@ impl GraphManager {
         return false;
     }
 
-    fn add(&mut self, x: i32, y: i32) {
+    fn add(&mut self, x: i64, y: i64) {
         let src_coord = Coord { x: x, y: y };
         if !self.coord_to_nodes.contains_key(&src_coord) {
             let src = self.graph.add_node(src_coord);
@@ -51,7 +49,7 @@ impl GraphManager {
         }
     }
 
-    fn add_target(&mut self, x: i32, y: i32, x_t: i32, y_t: i32) {
+    fn add_target(&mut self, x: i64, y: i64, x_t: i64, y_t: i64) {
         let src_coord = Coord { x: x, y: y };
         let tgt_coord = Coord { x: x_t, y: y_t };
         if self.has_edge(src_coord, tgt_coord) {
@@ -69,27 +67,27 @@ impl GraphManager {
         self.edges.insert((src_coord, tgt_coord));
     }
 
-    fn add_north_of(&mut self, x: i32, y: i32) {
+    fn add_north_of(&mut self, x: i64, y: i64) {
         self.add_target(x, y, x, y - 1);
     }
 
-    fn add_south_of(&mut self, x: i32, y: i32) {
+    fn add_south_of(&mut self, x: i64, y: i64) {
         self.add_target(x, y, x, y + 1);
     }
 
-    fn add_east_of(&mut self, x: i32, y: i32) {
+    fn add_east_of(&mut self, x: i64, y: i64) {
         self.add_target(x, y, x + 1, y);
     }
 
-    fn add_west_of(&mut self, x: i32, y: i32) {
+    fn add_west_of(&mut self, x: i64, y: i64) {
         self.add_target(x, y, x - 1, y);
     }
 }
 
 fn parse_pipes(string_list: &Vec<String>) -> (Graph<Coord, u32, Directed, u32>, Coord) {
     let graph: Graph<Coord, u32, Directed, u32> = Graph::new();
-    let mut origin_x: i32 = 0;
-    let mut origin_y: i32 = 0;
+    let mut origin_x: i64 = 0;
+    let mut origin_y: i64 = 0;
     let mut manager = GraphManager {
         graph: graph,
         coord_to_nodes: HashMap::new(),
@@ -196,17 +194,15 @@ fn parse_pipes(string_list: &Vec<String>) -> (Graph<Coord, u32, Directed, u32>, 
 /// assert_eq!(day10::puzzle_a(&vec1), 8);
 /// ```
 pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
-    let (mut graph, start_coord) = parse_pipes(string_list);
-    // Get edges connected to origin
-    let mut src = graph
+    let (graph, start_coord) = parse_pipes(string_list);
+    let src = graph
         .node_indices()
         .find(|i| graph[*i] == start_coord)
         .unwrap();
     let mut length = 0;
     let mut bfs = Bfs::new(&graph, src);
-    while let Some(nx) = bfs.next(&graph) {
+    while let Some(_) = bfs.next(&graph) {
         length += 1;
-        let cur_coord: Coord = graph[nx];
     }
     if DEBUG {
         println!("Length: {}", length);
@@ -214,15 +210,78 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
     return length / 2;
 }
 
-/// Foo
+/// Calculate the area enclosed by the loop.
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///    "FF7FSF7F7F7F7F7F---7",
+///    "L|LJ||||||||||||F--J",
+///    "FL-7LJLJ||||||LJL-77",
+///    "F--JF--7||LJLJ7F7FJ-",
+///    "L---JF-JLJ.||-FJLJJ7",
+///    "|F|F-JF---7F7-L7L|7|",
+///    "|FFJF7L7F-JF7|JL---7",
+///    "7-L-JL7||F7|L7F-7F7|",
+///    "L.L7LFJ|||||FJL7||LJ",
+///    "L7JLJL-JLJLJL--JLJ.L",
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day10::puzzle_b(&vec1), 0);
+/// assert_eq!(day10::puzzle_b(&vec1), 10);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
-    return 0;
+pub fn puzzle_b(string_list: &Vec<String>) -> i64 {
+    let (graph, start_coord) = parse_pipes(string_list);
+    let src = graph
+        .node_indices()
+        .find(|i| graph[*i] == start_coord)
+        .unwrap();
+    let mut coords_in_loops = vec![start_coord];
+    // use Dfs instead of BFS here
+    // This keeps a "direction" which I need for shoelace theorem below.
+    let mut dfs = Dfs::new(&graph, src);
+    while let Some(nx) = dfs.next(&graph) {
+        let cur_coord: Coord = graph[nx];
+        coords_in_loops.push(cur_coord);
+    }
+
+    // Shoe lace therom gets us part way, but it overestimates.
+    let i64_list_len: i64 = string_list.len().try_into().unwrap();
+
+    // This is twice the area by default.
+    let total_area = coords_in_loops
+        .clone()
+        .into_iter()
+        .chain(std::iter::once(coords_in_loops[0]))
+        .collect::<Vec<_>>()
+        .as_slice()
+        .windows(2)
+        .map(|window| {
+            let (coord_1, coord_2) = (window[0], window[1]);
+            let x1 = coord_1.x;
+            let x2 = coord_2.x;
+            let mut y1 = coord_1.y;
+            let mut y2 = coord_2.y;
+            // We need to caluclate the determinant
+            // x1 x2
+            // y1 y2
+            // x1 * y2 - y1 * x2
+            // However, this assumes a different coordinate space then we are in
+            // this will map it.
+            y1 = i64_list_len - y1;
+            y2 = i64_list_len - y2;
+
+            return (x1 * y2) - (x2 * y1);
+        })
+        .sum::<i64>()
+        / 2;
+
+    if DEBUG {
+        println!("{} total area", total_area);
+    }
+
+    let loops_len: i64 = coords_in_loops.len().try_into().unwrap();
+
+    // Now we need to use Pick's theorm
+    // total_area = interior_area + loop_len / 2 - 1
+    // total_area - loop_len/2 + 1 = interior_area
+    return total_area - loops_len / 2 + 1;
 }
 
 #[cfg(test)]
