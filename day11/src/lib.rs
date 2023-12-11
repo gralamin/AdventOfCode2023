@@ -6,7 +6,7 @@ use gridlib::GridCoordinate;
 use gridlib::GridTraversable;
 use itertools::Itertools;
 use std::collections::HashSet;
-use std::collections::VecDeque;
+// use std::collections::VecDeque;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
 enum Cosmic {
@@ -211,22 +211,117 @@ pub fn puzzle_a(string_list: &Vec<String>) -> usize {
 
 */
 
-/// Foo
+type CalcSize = i32;
+
+fn manhattan_distance_expanded(
+    start: GridCoordinate,
+    end: GridCoordinate,
+    filled: &Vec<GridCoordinate>,
+    times_larger: usize,
+) -> usize {
+    let x1: CalcSize = start.x.try_into().unwrap();
+    let y1: CalcSize = start.y.try_into().unwrap();
+
+    let x2: CalcSize = end.x.try_into().unwrap();
+    let y2: CalcSize = end.y.try_into().unwrap();
+
+    // Calculate how many empty rows and empty columns we pass through
+    let mut x1_offset: CalcSize = 0;
+    let mut y1_offset: CalcSize = 0;
+
+    let mut x2_offset: CalcSize = 0;
+    let mut y2_offset: CalcSize = 0;
+    let times_larger_c: CalcSize = times_larger.try_into().unwrap();
+    let offset_by: CalcSize = times_larger_c - 1;
+    let mut seen_xs = HashSet::new();
+    let mut seen_ys = HashSet::new();
+    for g in filled {
+        seen_xs.insert(g.x);
+        seen_ys.insert(g.y);
+    }
+    if x1 < x2 {
+        // x1 we assume is in its proper place
+        // so we are editing x2
+        for x in (start.x + 1)..end.x {
+            if seen_xs.contains(&x) {
+                // galaxy column, no offset
+                continue;
+            }
+            x2_offset += offset_by;
+        }
+    } else if x1 > x2 {
+        // x2 we assume are in its proper place, so we are editing x1.
+        for x in (end.x + 1)..start.x {
+            if seen_xs.contains(&x) {
+                // galaxy column, no offset
+                continue;
+            }
+            x1_offset += offset_by;
+        }
+    }
+    if y1 < y2 {
+        // As logic above
+        for y in (start.y + 1)..end.y {
+            if seen_ys.contains(&y) {
+                // galaxy row, no offset
+                continue;
+            }
+            y2_offset += offset_by;
+        }
+    } else if y1 > y2 {
+        for y in (end.y + 1)..start.y {
+            if seen_ys.contains(&y) {
+                // galaxy row, no offset
+                continue;
+            }
+            y1_offset += offset_by;
+        }
+    }
+
+    let a = (x1 + x1_offset) - (x2 + x2_offset);
+    let b = (y1 + y1_offset) - (y2 + y2_offset);
+    let result = a.abs() + b.abs();
+    return result.try_into().unwrap();
+}
+
+fn solve_puzzle_b(string_list: &Vec<String>, times_larger: usize) -> usize {
+    let grid = parse_grid(string_list);
+    let galaxy_coords: Vec<GridCoordinate> = find_all_galaxies(&grid);
+    // Its much too slow to actually expand these, for 1,000,000 times
+    return galaxy_coords
+        .clone()
+        .into_iter()
+        .combinations(2)
+        .map(|v| manhattan_distance_expanded(v[0], v[1], &galaxy_coords, times_larger))
+        .sum();
+}
+
+/// 1,000,000 times any row or column that has no galaxies in size, then compute the pairwise
+/// shortest path between all combinations of galaxies, only moving each empty space.
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///     "...#......",
+///     ".......#..",
+///     "#.........",
+///     "..........",
+///     "......#...",
+///     ".#........",
+///     ".........#",
+///     "..........",
+///     ".......#..",
+///     "#...#....."
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day11::puzzle_b(&vec1), 0);
+/// assert_eq!(day11::puzzle_b(&vec1), 82000210);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
-    return 0;
+pub fn puzzle_b(string_list: &Vec<String>) -> usize {
+    return solve_puzzle_b(string_list, 1000000);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn generate_grid() -> Grid<Cosmic> {
+    fn generate_input() -> Vec<String> {
         let s = vec![
             "...#......",
             ".......#..",
@@ -242,6 +337,11 @@ mod tests {
         .iter()
         .map(|s| s.to_string())
         .collect();
+        return s;
+    }
+
+    fn generate_grid() -> Grid<Cosmic> {
+        let s = generate_input();
         let grid = parse_grid(&s);
         return grid;
     }
@@ -371,5 +471,19 @@ mod tests {
         ];
         let actual_galaxies = find_all_galaxies(&expanded);
         assert_eq!(actual_galaxies, expected_galaxies);
+    }
+
+    #[test]
+    fn test_solve_b_10_times() {
+        let s = generate_input();
+        let r = solve_puzzle_b(&s, 10);
+        assert_eq!(r, 1030);
+    }
+
+    #[test]
+    fn test_solve_b_100_times() {
+        let s = generate_input();
+        let r = solve_puzzle_b(&s, 100);
+        assert_eq!(r, 8410);
     }
 }
