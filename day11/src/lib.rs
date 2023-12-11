@@ -192,25 +192,6 @@ pub fn puzzle_a(string_list: &Vec<String>) -> usize {
         .sum();
 }
 
-/*
-            111
-  0123456789012
-0 ....1........  CHECK
-1 .........2... ERR off by x=1
-2 3............ CHECK
-3 .............
-4 .............
-5 ........4.... ERR off by x=1
-6 .5........... CHECK
-7 ............6 CHECK
-8 .............
-9 .............
-0 .........7... ERR off by x=1
-1 8....9....... Check, ERR off by x =1
-
-
-*/
-
 type CalcSize = i32;
 
 fn manhattan_distance_expanded(
