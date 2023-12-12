@@ -1,6 +1,7 @@
 extern crate filelib;
 
 pub use filelib::load_no_blanks;
+use std::collections::HashMap;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
 enum SpringState {
@@ -160,15 +161,168 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
     return possibilities.into_iter().sum();
 }
 
-/// Foo
+fn parse_state_unfold(
+    string_list: &Vec<String>,
+    multiply_by: u32,
+) -> (Vec<Vec<SpringState>>, Vec<Vec<u32>>) {
+    let mut states = vec![];
+    let mut groups = vec![];
+
+    for line in string_list {
+        let (cur_state_s, group_s) = line.split_once(" ").unwrap();
+        let mut cur_states = vec![];
+        for c in cur_state_s.chars() {
+            let s = match c {
+                '.' => SpringState::Operational,
+                '#' => SpringState::Damaged,
+                '?' => SpringState::Unknown,
+                _ => panic!("Parse error '{}'", c),
+            };
+            cur_states.push(s);
+        }
+
+        let mut cur_groups = vec![];
+        for num in group_s.split(",") {
+            let as_u32: u32 = num.parse().unwrap();
+            cur_groups.push(as_u32);
+        }
+
+        let mut unfolded_groups = vec![];
+        let mut unfolded_states = vec![];
+        for i in 0..multiply_by {
+            if i != 0 {
+                unfolded_states.push(SpringState::Unknown);
+            }
+            unfolded_groups.extend(cur_groups.clone());
+            unfolded_states.extend(cur_states.clone());
+        }
+
+        // To avoid complications, lets just always have this end with a '.'
+        // It doesn't change anything of the problem, but saves me coding a case.
+        unfolded_states.push(SpringState::Operational);
+        groups.push(unfolded_groups);
+        states.push(unfolded_states);
+    }
+
+    return (states, groups);
+}
+
+type Cache = HashMap<(usize, u32, usize), u64>;
+
+fn recrusive_solve(
+    state: &Vec<SpringState>,
+    group: &Vec<u32>,
+    state_index: usize,
+    current_count: u32,
+    group_index: usize,
+    cache: &mut Cache,
+) -> u64 {
+    let cache_key = (state_index, current_count, group_index);
+    if cache.contains_key(&cache_key) {
+        return *cache.get(&cache_key).unwrap();
+    }
+
+    let next_state_index = state_index + 1;
+
+    // End case
+    if state_index == state.len() {
+        if group.len() == group_index {
+            // If we are on the last group
+            // and have reached this end state
+            // Then this is valid!
+            cache.insert(cache_key, 1);
+            return 1;
+        }
+        // This isn't valid.
+        cache.insert(cache_key, 0);
+        return 0;
+    }
+
+    // Counting case: hit a damage, count up current run
+    if state[state_index] == SpringState::Damaged {
+        let result = recrusive_solve(
+            state,
+            group,
+            state_index + 1,
+            current_count + 1,
+            group_index,
+            cache,
+        );
+        cache.insert(cache_key, result);
+        return result;
+    }
+
+    // Counting case: Hit an operational, also handle if we have hit the last group - we don't
+    // want more damaged then.
+    if state[state_index] == SpringState::Operational || group_index == group.len() {
+        if group_index < group.len() && current_count == group[group_index] {
+            // Solved this run, move on to the next one.
+            let result = recrusive_solve(state, group, next_state_index, 0, group_index + 1, cache);
+            cache.insert(cache_key, result);
+            return result;
+        } else if current_count == 0 {
+            // Recurse to find this group
+            let result = recrusive_solve(state, group, next_state_index, 0, group_index, cache);
+            cache.insert(cache_key, result);
+            return result;
+        } else {
+            // This path is dead
+            cache.insert(cache_key, 0);
+            return 0;
+        }
+    }
+
+    // Question mark, we need to check if damaged, and if operational.
+    let damaged_count = recrusive_solve(
+        state,
+        group,
+        next_state_index,
+        current_count + 1,
+        group_index,
+        cache,
+    );
+    let mut operational_count = 0;
+    // If we have solved the current group, and this is now an operational, congrats increase the group!
+    if current_count == group[group_index] {
+        operational_count =
+            recrusive_solve(state, group, next_state_index, 0, group_index + 1, cache);
+    }
+    // We are starting this group
+    else if current_count == 0 {
+        operational_count = recrusive_solve(state, group, next_state_index, 0, group_index, cache);
+    }
+    // Otherwise, this group is invalid, and we can skip doing all those.
+    let v = damaged_count + operational_count;
+    cache.insert(cache_key, v);
+    return v;
+}
+
+fn initial_recursive_solve(state: &Vec<SpringState>, group: &Vec<u32>) -> u64 {
+    let mut cache = Cache::new();
+    return recrusive_solve(state, group, 0, 0, 0, &mut cache);
+}
+
+/// Unfold the input, get sum of arrangements.
+/// Unfold is done by multiplying by 5.
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///     "???.### 1,1,3",
+///     ".??..??...?##. 1,1,3",
+///     "?#?#?#?#?#?#?#? 1,3,1,6",
+///     "????.#...#... 4,1,1",
+///     "????.######..#####. 1,6,5",
+///     "?###???????? 3,2,1",
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day12::puzzle_b(&vec1), 0);
+/// assert_eq!(day12::puzzle_b(&vec1), 525152);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
-    return 0;
+pub fn puzzle_b(string_list: &Vec<String>) -> u64 {
+    let (state, groups) = parse_state_unfold(string_list, 5);
+    let possibilities: Vec<u64> = state
+        .iter()
+        .zip(groups.iter())
+        .map(|(cur_state, cur_group)| initial_recursive_solve(cur_state, cur_group))
+        .collect();
+    return possibilities.into_iter().sum();
 }
 
 #[cfg(test)]
