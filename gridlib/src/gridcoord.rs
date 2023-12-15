@@ -119,7 +119,7 @@ mod tests {
         let a = GridCoordinate::new(2321, 9875);
         let b = GridCoordinate::new(1, 5);
         let expected = GridCoordinate::new(2322, 9880);
-        assert_eq!(a+b, expected);
+        assert_eq!(a + b, expected);
     }
 
     #[test]
@@ -134,9 +134,24 @@ mod tests {
         assert_eq!(early_y_late_x.cmp(&early_y_late_x), Ordering::Equal);
         assert_eq!(early_y_late_x.cmp(&early_x_late_y), Ordering::Less);
         assert_eq!(early_x_late_y.cmp(&early_y_late_x), Ordering::Greater);
-        let mut list = vec![late_x_late_y, early_x_late_y, early_y_late_x, early_y_early_x, early_y_late_x];
+        let mut list = vec![
+            late_x_late_y,
+            early_x_late_y,
+            early_y_late_x,
+            early_y_early_x,
+            early_y_late_x,
+        ];
         list.sort();
-        assert_eq!(list, vec![early_y_early_x, early_y_late_x, early_y_late_x, early_x_late_y, late_x_late_y]);
+        assert_eq!(
+            list,
+            vec![
+                early_y_early_x,
+                early_y_late_x,
+                early_y_late_x,
+                early_x_late_y,
+                late_x_late_y
+            ]
+        );
     }
 
     #[test]
