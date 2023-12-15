@@ -2,6 +2,7 @@ pub use crate::direction::Direction;
 
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
+use std::ops::Add;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GridCoordinate {
@@ -45,46 +46,15 @@ impl PartialOrd for GridCoordinate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GridCoordinateInf {
-    pub x: i32,
-    pub y: i32,
+pub struct GridCoordinateInf<T: Clone + Copy + Add<Output = T> + From<i32>> {
+    pub x: T,
+    pub y: T,
 }
 
-impl GridCoordinateInf {
-    pub fn new(x: i32, y: i32) -> GridCoordinateInf {
-        return GridCoordinateInf { x: x, y: y };
-    }
+impl<T: Clone + Copy + Add<Output = T> + From<i32>> std::ops::Add for GridCoordinateInf<T> {
+    type Output = GridCoordinateInf<T>;
 
-    pub fn move_dir(&self, direction: Direction) -> GridCoordinateInf {
-        let north_move = GridCoordinateInf::new(0, -1);
-        let south_move = GridCoordinateInf::new(0, 1);
-        let west_move = GridCoordinateInf::new(-1, 0);
-        let east_move = GridCoordinateInf::new(1, 0);
-
-        return *self
-            + match direction {
-                Direction::NORTH => north_move,
-                Direction::EAST => east_move,
-                Direction::SOUTH => south_move,
-                Direction::WEST => west_move,
-                Direction::NORTHEAST => north_move + east_move,
-                Direction::NORTHWEST => north_move + west_move,
-                Direction::SOUTHEAST => south_move + east_move,
-                Direction::SOUTHWEST => south_move + west_move,
-            };
-    }
-}
-
-impl Display for GridCoordinateInf {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        return write!(f, "({}, {})", self.x, self.y);
-    }
-}
-
-impl std::ops::Add for GridCoordinateInf {
-    type Output = GridCoordinateInf;
-
-    fn add(self, other: GridCoordinateInf) -> GridCoordinateInf {
+    fn add(self, other: GridCoordinateInf<T>) -> GridCoordinateInf<T> {
         return GridCoordinateInf {
             x: self.x + other.x,
             y: self.y + other.y,
@@ -92,22 +62,19 @@ impl std::ops::Add for GridCoordinateInf {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GridCoordinateInf64 {
-    pub x: i64,
-    pub y: i64,
-}
-
-impl GridCoordinateInf64 {
-    pub fn new(x: i64, y: i64) -> GridCoordinateInf64 {
-        return GridCoordinateInf64 { x: x, y: y };
+impl<T: Clone + Copy + Add<Output = T> + From<i32>> GridCoordinateInf<T> {
+    pub fn new(x: T, y: T) -> GridCoordinateInf<T> {
+        return GridCoordinateInf { x: x, y: y };
     }
 
-    pub fn move_dir(&self, direction: Direction) -> GridCoordinateInf64 {
-        let north_move = GridCoordinateInf64::new(0, -1);
-        let south_move = GridCoordinateInf64::new(0, 1);
-        let west_move = GridCoordinateInf64::new(-1, 0);
-        let east_move = GridCoordinateInf64::new(1, 0);
+    pub fn move_dir(&self, direction: Direction) -> GridCoordinateInf<T> {
+        let plus_one: T = 1.into();
+        let zero: T = 0.into();
+        let neg_one: T = (-1).into();
+        let north_move = GridCoordinateInf::<T>::new(zero, neg_one);
+        let south_move = GridCoordinateInf::<T>::new(zero, plus_one);
+        let west_move = GridCoordinateInf::<T>::new(neg_one, zero);
+        let east_move = GridCoordinateInf::<T>::new(plus_one, zero);
 
         return *self
             + match direction {
@@ -123,22 +90,13 @@ impl GridCoordinateInf64 {
     }
 }
 
-impl Display for GridCoordinateInf64 {
+impl<T: Clone + Copy + Add<Output = T> + From<i32> + Display> Display for GridCoordinateInf<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         return write!(f, "({}, {})", self.x, self.y);
     }
 }
 
-impl std::ops::Add for GridCoordinateInf64 {
-    type Output = GridCoordinateInf64;
-
-    fn add(self, other: GridCoordinateInf64) -> GridCoordinateInf64 {
-        return GridCoordinateInf64 {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        };
-    }
-}
+pub type GridCoordinateInf64 = GridCoordinateInf<i64>;
 
 #[cfg(test)]
 mod tests {
