@@ -35,7 +35,7 @@ impl std::ops::Add for GridCoordinate {
 
 impl Ord for GridCoordinate {
     fn cmp(&self, other: &Self) -> Ordering {
-        return other.x.cmp(&self.x).then_with(|| other.y.cmp(&self.y));
+        return self.y.cmp(&other.y).then_with(|| self.x.cmp(&other.x));
     }
 }
 
@@ -101,6 +101,7 @@ pub type GridCoordinateInf64 = GridCoordinateInf<i64>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cmp::Ordering;
 
     #[test]
     fn test_format_coord() {
@@ -111,6 +112,31 @@ mod tests {
         let c = GridCoordinateInf::new(-3213, -9932);
         let d = format!("{}", c);
         assert_eq!(d, "(-3213, -9932)");
+    }
+
+    #[test]
+    fn test_add_coords() {
+        let a = GridCoordinate::new(2321, 9875);
+        let b = GridCoordinate::new(1, 5);
+        let expected = GridCoordinate::new(2322, 9880);
+        assert_eq!(a+b, expected);
+    }
+
+    #[test]
+    fn test_order_coords() {
+        // Earlier y comes before later y
+        // Earlier x comes before later x
+        // y trumps x.
+        let early_y_late_x = GridCoordinate::new(5000, 0);
+        let early_x_late_y = GridCoordinate::new(0, 4000);
+        let early_y_early_x = GridCoordinate::new(5, 0);
+        let late_x_late_y = GridCoordinate::new(5000, 4000);
+        assert_eq!(early_y_late_x.cmp(&early_y_late_x), Ordering::Equal);
+        assert_eq!(early_y_late_x.cmp(&early_x_late_y), Ordering::Less);
+        assert_eq!(early_x_late_y.cmp(&early_y_late_x), Ordering::Greater);
+        let mut list = vec![late_x_late_y, early_x_late_y, early_y_late_x, early_y_early_x, early_y_late_x];
+        list.sort();
+        assert_eq!(list, vec![early_y_early_x, early_y_late_x, early_y_late_x, early_x_late_y, late_x_late_y]);
     }
 
     #[test]
