@@ -287,6 +287,20 @@ mod tests {
     }
 
     #[test]
+    fn test_set_invalid_grid_number() {
+        let mut grid = produce_grid();
+        let coord = GridCoordinate::new(300000, 3);
+        grid.set_value(coord, 99);
+    }
+
+    #[test]
+    fn test_get_invalid_grid_number() {
+        let mut grid = produce_grid();
+        let coord = GridCoordinate::new(300000, 3);
+        assert_eq!(grid.get_value(coord), None);
+    }
+
+    #[test]
     fn test_get_adjacent_coordinates() {
         let grid = produce_grid();
         assert_eq!(
