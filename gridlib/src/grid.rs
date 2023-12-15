@@ -2,8 +2,6 @@ use crate::direction::Direction;
 use crate::gridcoord::GridCoordinate;
 
 use std::clone::Clone;
-use std::cmp::Ordering;
-use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub struct Grid<T: Copy> {
@@ -295,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_get_invalid_grid_number() {
-        let mut grid = produce_grid();
+        let grid = produce_grid();
         let coord = GridCoordinate::new(300000, 3);
         assert_eq!(grid.get_value(coord), None);
     }
