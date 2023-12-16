@@ -1,16 +1,202 @@
 extern crate filelib;
 
 pub use filelib::load_no_blanks;
+use gridlib::Direction;
+use gridlib::Grid;
+use gridlib::GridCoordinate;
+use gridlib::GridTraversable;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::VecDeque;
 
-/// Foo
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
+enum MirrorDir {
+    SouthwestToNortheast,
+    NorthwestToSoutheast,
+}
+
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
+enum SplitterDir {
+    HorizontalToVertical,
+    VerticalToHorizontal,
+}
+
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
+enum Terrain {
+    Empty,
+    Mirror(MirrorDir),
+    Splitter(SplitterDir),
+}
+
+fn parse_grid(lines: &Vec<String>) -> Grid<Terrain> {
+    let width = lines[0].len();
+    let height = lines.len();
+    let mut grid_values = vec![];
+
+    for line in lines {
+        for c in line.chars() {
+            let tile = match c {
+                '.' => Terrain::Empty,
+                '/' => Terrain::Mirror(MirrorDir::SouthwestToNortheast),
+                '\\' => Terrain::Mirror(MirrorDir::NorthwestToSoutheast),
+                '|' => Terrain::Splitter(SplitterDir::HorizontalToVertical),
+                '-' => Terrain::Splitter(SplitterDir::VerticalToHorizontal),
+                _ => panic!("SAVE MEEEEEE"),
+            };
+            grid_values.push(tile);
+        }
+    }
+
+    return Grid::new(width, height, grid_values);
+}
+
+fn ray_trace(grid: &Grid<Terrain>) -> Vec<GridCoordinate> {
+    // count how many tiles the ray goes through
+    // It starts at 0,0 with direction East
+    let start = GridCoordinate::new(0, 0);
+    let start_direction = Direction::EAST;
+    let mut visited_coords: HashSet<GridCoordinate> = HashSet::new();
+    let mut cache: HashSet<(Direction, GridCoordinate)> = HashSet::new();
+    let mut to_visit: VecDeque<(Direction, GridCoordinate)> = VecDeque::new();
+    to_visit.push_back((start_direction, start));
+
+    while let Some((cur_direction, coord)) = to_visit.pop_front() {
+        // if we have been here and in this direction, nothing has changed so move on
+        if cache.contains(&(cur_direction, coord)) {
+            continue;
+        }
+        visited_coords.insert(coord);
+        cache.insert((cur_direction, coord));
+        let terrain = grid.get_value(coord).unwrap();
+        match terrain {
+            Terrain::Empty => {
+                // Keep going in current direction
+                if let Some(next_coord) = grid.get_coordinate_by_direction(coord, cur_direction) {
+                    to_visit.push_back((cur_direction, next_coord));
+                }
+            }
+            Terrain::Mirror(dir) => {
+                match dir {
+                    MirrorDir::SouthwestToNortheast => {
+                        // This is a /
+                        // If dir = East, become North, if dir = south, become West
+                        // If dir = west, become south, if dir = north, become east
+                        let next_direction = match cur_direction {
+                            Direction::EAST => Direction::NORTH,
+                            Direction::NORTH => Direction::EAST,
+                            Direction::SOUTH => Direction::WEST,
+                            Direction::WEST => Direction::SOUTH,
+                            _ => panic!("Not supported"),
+                        };
+                        if let Some(next_coord) =
+                            grid.get_coordinate_by_direction(coord, next_direction)
+                        {
+                            to_visit.push_back((next_direction, next_coord));
+                        }
+                    }
+                    MirrorDir::NorthwestToSoutheast => {
+                        // This is a \
+                        // If dir = East, become South, if dir = south, become east
+                        // If dir = west, become North, if dir = north, become West
+                        let next_direction = match cur_direction {
+                            Direction::EAST => Direction::SOUTH,
+                            Direction::SOUTH => Direction::EAST,
+                            Direction::NORTH => Direction::WEST,
+                            Direction::WEST => Direction::NORTH,
+                            _ => panic!("Not supported"),
+                        };
+                        if let Some(next_coord) =
+                            grid.get_coordinate_by_direction(coord, next_direction)
+                        {
+                            to_visit.push_back((next_direction, next_coord));
+                        }
+                    }
+                }
+            }
+            Terrain::Splitter(dir) => {
+                match dir {
+                    SplitterDir::HorizontalToVertical => {
+                        // This is a |
+                        // If north south, treat as empty
+                        // If east west, split into two beams, one north, one south
+                        match cur_direction {
+                            Direction::NORTH | Direction::SOUTH => {
+                                if let Some(next_coord) =
+                                    grid.get_coordinate_by_direction(coord, cur_direction)
+                                {
+                                    to_visit.push_back((cur_direction, next_coord));
+                                }
+                            }
+                            Direction::EAST | Direction::WEST => {
+                                if let Some(north_coord) =
+                                    grid.get_coordinate_by_direction(coord, Direction::NORTH)
+                                {
+                                    to_visit.push_back((Direction::NORTH, north_coord));
+                                }
+                                if let Some(south_coord) =
+                                    grid.get_coordinate_by_direction(coord, Direction::SOUTH)
+                                {
+                                    to_visit.push_back((Direction::SOUTH, south_coord));
+                                }
+                            }
+                            _ => panic!("Not supported"),
+                        }
+                    }
+                    SplitterDir::VerticalToHorizontal => {
+                        // This is a -
+                        // If north south, split into two beams, one east, one west
+                        // If east west, treat as empty
+                        match cur_direction {
+                            Direction::NORTH | Direction::SOUTH => {
+                                if let Some(east_coord) =
+                                    grid.get_coordinate_by_direction(coord, Direction::EAST)
+                                {
+                                    to_visit.push_back((Direction::EAST, east_coord));
+                                }
+                                if let Some(west_coord) =
+                                    grid.get_coordinate_by_direction(coord, Direction::WEST)
+                                {
+                                    to_visit.push_back((Direction::WEST, west_coord));
+                                }
+                            }
+                            Direction::EAST | Direction::WEST => {
+                                if let Some(next_coord) =
+                                    grid.get_coordinate_by_direction(coord, cur_direction)
+                                {
+                                    to_visit.push_back((cur_direction, next_coord));
+                                }
+                            }
+                            _ => panic!("Not supported"),
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return Vec::from_iter(visited_coords);
+}
+
+/// Energize the mirrors
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///    r".|...\....",
+///    r"|.-.\.....",
+///    r".....|-...",
+///    r"........|.",
+///    r"..........",
+///    r".........\",
+///    r"..../.\\..",
+///    r".-.-/..|..",
+///    r".|....-|.\",
+///    r"..//.|....",
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day16::puzzle_a(&vec1), 0);
+/// assert_eq!(day16::puzzle_a(&vec1), 46);
 /// ```
-pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
-    return 0;
+pub fn puzzle_a(string_list: &Vec<String>) -> usize {
+    let grid = parse_grid(string_list);
+    let energized_tiles = ray_trace(&grid);
+    return energized_tiles.len();
 }
 
 /// Foo
@@ -24,17 +210,14 @@ pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
     return 0;
 }
 
-/// Delete this after starting on puzzle_a.
-/// ```
-/// let vec1: Vec<u32> = vec![];
-/// let vec2: Vec<u32> = vec![1];
-/// assert_eq!(day16::coverage_workaround(&vec1), 1);
-/// assert_eq!(day16::coverage_workaround(&vec2), 2);
-/// ```
-pub fn coverage_workaround(a: &Vec<u32>) -> u32 {
-    if a.len() == 0 {
-        return 1;
-    } else {
-        return 2;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ray_trace_simple_empty_three_mirror() {
+        let vec1: Vec<String> = vec![r".\", r"\/"].iter().map(|s| s.to_string()).collect();
+        let grid = parse_grid(&vec1);
+        assert_eq!(ray_trace(&grid).len(), 4);
     }
 }
