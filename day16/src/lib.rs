@@ -5,7 +5,6 @@ use gridlib::Direction;
 use gridlib::Grid;
 use gridlib::GridCoordinate;
 use gridlib::GridTraversable;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 
@@ -51,10 +50,19 @@ fn parse_grid(lines: &Vec<String>) -> Grid<Terrain> {
 }
 
 fn ray_trace(grid: &Grid<Terrain>) -> Vec<GridCoordinate> {
-    // count how many tiles the ray goes through
     // It starts at 0,0 with direction East
     let start = GridCoordinate::new(0, 0);
     let start_direction = Direction::EAST;
+    return ray_trace_inner(grid, start, start_direction);
+}
+
+// Factor out for part b
+fn ray_trace_inner(
+    grid: &Grid<Terrain>,
+    start: GridCoordinate,
+    start_direction: Direction,
+) -> Vec<GridCoordinate> {
+    // count how many tiles the ray goes through
     let mut visited_coords: HashSet<GridCoordinate> = HashSet::new();
     let mut cache: HashSet<(Direction, GridCoordinate)> = HashSet::new();
     let mut to_visit: VecDeque<(Direction, GridCoordinate)> = VecDeque::new();
@@ -199,15 +207,51 @@ pub fn puzzle_a(string_list: &Vec<String>) -> usize {
     return energized_tiles.len();
 }
 
-/// Foo
+fn generate_entrances(grid: &Grid<Terrain>) -> Vec<(Direction, GridCoordinate)> {
+    let mut results = vec![];
+    let max_x = grid.get_width() - 1;
+    let max_y = grid.get_height() - 1;
+    for coord in grid.coord_iter() {
+        if coord.x == 0 {
+            // Left side, can enter here from the east
+            results.push((Direction::EAST, coord));
+        } else if coord.x == max_x {
+            results.push((Direction::WEST, coord));
+        }
+        if coord.y == 0 {
+            // Top, enter to the south
+            results.push((Direction::SOUTH, coord));
+        } else if coord.y == max_y {
+            results.push((Direction::NORTH, coord));
+        }
+    }
+    return results;
+}
+
+/// Try from every possible start point
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///    r".|...\....",
+///    r"|.-.\.....",
+///    r".....|-...",
+///    r"........|.",
+///    r"..........",
+///    r".........\",
+///    r"..../.\\..",
+///    r".-.-/..|..",
+///    r".|....-|.\",
+///    r"..//.|....",
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day16::puzzle_b(&vec1), 0);
+/// assert_eq!(day16::puzzle_b(&vec1), 51);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
-    return 0;
+pub fn puzzle_b(string_list: &Vec<String>) -> usize {
+    let grid = parse_grid(string_list);
+    let entrances = generate_entrances(&grid);
+    return entrances
+        .into_iter()
+        .map(|(direction, origin)| ray_trace_inner(&grid, origin, direction).len())
+        .max()
+        .unwrap();
 }
 
 #[cfg(test)]
