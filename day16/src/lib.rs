@@ -7,6 +7,7 @@ use gridlib::GridCoordinate;
 use gridlib::GridTraversable;
 use std::collections::HashSet;
 use std::collections::VecDeque;
+use std::thread;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Hash)]
 enum MirrorDir {
@@ -249,7 +250,14 @@ pub fn puzzle_b(string_list: &Vec<String>) -> usize {
     let entrances = generate_entrances(&grid);
     return entrances
         .into_iter()
-        .map(|(direction, origin)| ray_trace_inner(&grid, origin, direction).len())
+        .map(|(direction, origin)| {
+            let thread_grid = grid.clone();
+            let handle = thread::spawn(move || {
+                return ray_trace_inner(&thread_grid, origin, direction).len();
+            });
+            return handle;
+        })
+        .map(|handle| handle.join().unwrap())
         .max()
         .unwrap();
 }
