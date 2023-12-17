@@ -103,14 +103,15 @@ fn pathfind(
         }
         let index = state.cur_location.y * width + state.cur_location.x;
 
-        if let Some(cur_dir) = state.cur_direction{
+        if let Some(cur_dir) = state.cur_direction {
             if visited.contains(&(state.cur_location, cur_dir, state.cur_streak)) {
-                continue
+                continue;
             }
             visited.insert((state.cur_location, cur_dir, state.cur_streak));
         }
-        
-        if state.cur_cost < dist[index] {
+
+        // Only record the cost if we are on the minimum streak
+        if state.cur_cost < dist[index] && state.cur_streak >= min_streak {
             dist[index] = state.cur_cost;
             if state.cur_location == end {
                 final_path = state.previous_steps;
@@ -152,6 +153,7 @@ fn pathfind(
             // Handling for all places but start
             if let Some(cur_direction) = state.cur_direction {
                 // Can't go backwards.
+
                 if possible_dir != cur_direction && state.cur_streak >= min_streak {
                     let is_backwards = match cur_direction {
                         Direction::NORTH => possible_dir == Direction::SOUTH,
@@ -174,7 +176,7 @@ fn pathfind(
                         previous_steps: steps,
                     };
                     queue.push(next_state);
-                } else {
+                } else if possible_dir == cur_direction {
                     let num_dir = state.cur_streak + 1;
                     // Go straight case
                     let next_state = QueueState {
@@ -208,7 +210,7 @@ fn pathfind(
 }
 
 fn debug_print_path(path: &Vec<PathStep>, grid: &Grid<u32>) {
-    let debug = true;
+    let debug = false;
     if !debug {
         return;
     }
@@ -281,15 +283,42 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
     return result;
 }
 
-/// Foo
+/// Pathfind a weird graph
+/// First, you can only go left, straight or right
+/// Then you can't go more than 10 steps in direction
+/// AND MUST go at least 4
+/// Then you want to minimize the heat loss
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///     "2413432311323",
+///     "3215453535623",
+///     "3255245654254",
+///     "3446585845452",
+///     "4546657867536",
+///     "1438598798454",
+///     "4457876987766",
+///     "3637877979653",
+///     "4654967986887",
+///     "4564679986453",
+///     "1224686865563",
+///     "2546548887735",
+///     "4322674655533"
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day17::puzzle_b(&vec1), 0);
+/// assert_eq!(day17::puzzle_b(&vec1), 94);
 /// ```
 pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
-    return 0;
+    let grid = parse_grid(string_list);
+    let (result, path) = pathfind(
+        0,
+        0,
+        grid.get_width() - 1,
+        grid.get_height() - 1,
+        &grid,
+        4,
+        10,
+    );
+    debug_print_path(&path, &grid);
+    return result;
 }
 
 #[cfg(test)]
@@ -367,5 +396,21 @@ mod tests {
         let sorted_order: Vec<QueueState> = visit_order.into_iter().rev().collect();
 
         assert_eq!(to_order, sorted_order);
+    }
+
+    #[test]
+    fn test_alt_puzzleb() {
+        let vec1: Vec<String> = vec![
+            "111111111111",
+            "999999999991",
+            "999999999991",
+            "999999999991",
+            "999999999991",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        let result = puzzle_b(&vec1);
+        assert_eq!(result, 71);
     }
 }
