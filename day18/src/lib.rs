@@ -44,9 +44,8 @@ fn get_points(plan: &Vec<PlanStep>) -> Vec<GridCoordinateInf64> {
     let mut result = vec![start];
     let mut cur = start;
     for step in plan {
-        for _ in 0..step.distance {
-            cur = cur.move_dir(step.dir);
-        }
+        let dist_i64: i64 = step.distance.try_into().unwrap();
+        cur = cur.move_dir_dist(step.dir, dist_i64);
         result.push(cur);
     }
     return result;
