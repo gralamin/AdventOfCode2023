@@ -89,6 +89,31 @@ impl<T: Clone + Copy + Add<Output = T> + From<i32>> GridCoordinateInf<T> {
             };
     }
 }
+impl<T: Clone + Copy + Add<Output = T> + From<i32> + std::ops::Mul<Output = T>>
+    GridCoordinateInf<T>
+{
+    pub fn move_dir_dist(&self, direction: Direction, distance: T) -> GridCoordinateInf<T> {
+        let plus_one: T = 1.into();
+        let zero: T = 0.into();
+        let neg_one: T = (-1).into();
+        let north_move = GridCoordinateInf::<T>::new(zero, neg_one * distance);
+        let south_move = GridCoordinateInf::<T>::new(zero, plus_one * distance);
+        let west_move = GridCoordinateInf::<T>::new(neg_one * distance, zero);
+        let east_move = GridCoordinateInf::<T>::new(plus_one * distance, zero);
+
+        return *self
+            + match direction {
+                Direction::NORTH => north_move,
+                Direction::EAST => east_move,
+                Direction::SOUTH => south_move,
+                Direction::WEST => west_move,
+                Direction::NORTHEAST => north_move + east_move,
+                Direction::NORTHWEST => north_move + west_move,
+                Direction::SOUTHEAST => south_move + east_move,
+                Direction::SOUTHWEST => south_move + west_move,
+            };
+    }
+}
 
 impl<T: Clone + Copy + Add<Output = T> + From<i32> + Display> Display for GridCoordinateInf<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
