@@ -195,15 +195,50 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u64 {
     return counter.values().product();
 }
 
-/// Foo
+fn process_to_dest(answer: String, modules: &mut Vec<Module>) -> u64 {
+    let mut count: u64 = 0;
+    let start = "broadcaster".to_string();
+    let mut process_queue: VecDeque<(String, Pulse, Option<usize>)> = VecDeque::new();
+    while count < u64::MAX {
+        count += 1;
+        process_queue.push_back((start.clone(), LOW_PULSE, None));
+        while let Some((module, pulse, last_id)) = process_queue.pop_front() {
+            // I didn't find a good automated way to do this, probably what I need to do is
+            // reverse the graph to get the inputs to ll
+            // each time one sends to ll, print the number
+            // These end up as independant cycles in the graph, so we can just LCM them
+            if module == "ll" && pulse == HIGH_PULSE {
+                println!("lid: {}, count: {}", last_id.unwrap(), count);
+            }
+            if module == answer && pulse == LOW_PULSE {
+                return count;
+            }
+            let (targets, signal, process_id) = process_inputs(pulse, modules, &module, last_id);
+            if let Some(s) = signal {
+                for t in targets {
+                    process_queue.push_back((t, s, Some(process_id)));
+                }
+            }
+        }
+    }
+    return count;
+}
+
+/// Find how many button presses are required to reach rx.
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///   "broadcaster -> a",
+///   "%a -> inv, con",
+///   "&inv -> b",
+///   "%b -> con",
+///   "&con -> rx",
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day20::puzzle_b(&vec1), 0);
+/// assert_eq!(day20::puzzle_b(&vec1), 1);
 /// ```
 pub fn puzzle_b(string_list: &Vec<String>) -> u64 {
-    return 0;
+    let mut modules = parse_modules(string_list);
+    scan_add_inputs(&mut modules);
+    return process_to_dest("rx".to_string(), &mut modules);
 }
 
 #[cfg(test)]
