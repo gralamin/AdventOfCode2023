@@ -165,13 +165,24 @@ pub fn puzzle_a(string_list: &Vec<String>, num_steps: u32) -> usize {
     return find_places_x_steps_from_you(&grid, &origin, num_steps);
 }
 
-/// Foo
+/// Hahaha infinite grid now, slightly more complicated.
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///     "...........",
+///     ".....###.#.",
+///     ".###.##..#.",
+///     "..#.#...#..",
+///     "....#.#....",
+///     ".##..S####.",
+///     ".##..#...#.",
+///     ".......##..",
+///     ".##.#.####.",
+///     ".##..##.##.",
+///     "..........."
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day21::puzzle_b(&vec1), 0);
+/// assert_eq!(day21::puzzle_b(&vec1, 5000), 16733044);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
+pub fn puzzle_b(string_list: &Vec<String>, num_steps: u32) -> usize {
+    let (grid, origin) = parse_grid(string_list);
     return 0;
 }
