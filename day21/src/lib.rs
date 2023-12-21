@@ -191,9 +191,34 @@ pub fn puzzle_b(string_list: &Vec<String>, num_steps: u32) -> i64 {
     let height_u32: u32 = grid.get_height().try_into().unwrap();
     let expanded_grid = expand_grid(&grid, 7);
 
-    let v0 = find_places_x_steps_from_you(&expanded_grid, &origin, y_u32);
-    let v1 = find_places_x_steps_from_you(&expanded_grid, &origin, y_u32 + height_u32);
-    let v2 = find_places_x_steps_from_you(&expanded_grid, &origin, y_u32 + height_u32 * 2);
+    /*
+      factor of 1:
+      A -> 0 move
+      Factor of 2:
+      AA
+      AA
+      0 move
+      factor of 3:
+      AAA
+      AAA -> 1 down, 1 right
+      AAA
+      factor of 4:
+      AAAA
+      AAAA  -> 1 down, 1 right
+      AAAA
+      AAAA
+      factor of 5:
+      AAAAA
+      AAAAA
+      AAAAA -> 2 down, 2 right
+      AAAAA
+      AAAAA
+     */
+    let new_start = GridCoordinate::new(origin.x + grid.get_height() *3, origin.y + grid.get_height() *3);
+
+    let v0 = find_places_x_steps_from_you(&expanded_grid, &new_start, y_u32);
+    let v1 = find_places_x_steps_from_you(&expanded_grid, &new_start, y_u32 + height_u32);
+    let v2 = find_places_x_steps_from_you(&expanded_grid, &new_start, y_u32 + height_u32 * 2);
     let num_traverse = (num_steps - y_u32) / height_u32;
     return solve_quadratic(num_traverse as i64, v0 as i64, v1 as i64, v2 as i64);
 }
