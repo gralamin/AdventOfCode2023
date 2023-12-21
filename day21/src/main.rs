@@ -9,6 +9,6 @@ fn main() {
     let value = puzzle_a(&lines, 64);
     println!("Answer to 1st question: {}", value);
 
-    let value_b = puzzle_b(&lines);
+    let value_b = puzzle_b(&lines, 26501365);
     println!("Answer to 2nd question: {}", value_b);
 }
