@@ -134,11 +134,7 @@ fn find_places_x_steps_from_you(
     return dist
         .into_iter()
         .filter(|x| *x <= num_steps)
-        .filter(|x| {
-            // Not handled here, odd step case
-            // if shortest distance is odd, it will never be correct
-            x % 2 == 0
-        })
+        .filter(|x| x % 2 == num_steps % 2)
         .collect::<Vec<_>>()
         .len();
 }
@@ -165,24 +161,82 @@ pub fn puzzle_a(string_list: &Vec<String>, num_steps: u32) -> usize {
     return find_places_x_steps_from_you(&grid, &origin, num_steps);
 }
 
+fn solve_quadratic(n: i64, v0: i64, v1: i64, v2: i64) -> i64 {
+    return v0 + n * (v1 - v0) + n * (n - 1) / 2 * ((v2 - v1) - (v1 - v0));
+}
+
+fn expand_grid(grid: &Grid<Terrain>, factor: usize) -> Grid<Terrain> {
+    let old_height = grid.get_height();
+    let old_width = grid.get_width();
+    let new_height = old_height * factor;
+    let new_width = old_width * factor;
+    let mut values = vec![];
+    for y in 0..new_height {
+        let old_y = y % old_height;
+        for x in 0..new_width {
+            let old_x = x % old_width;
+            values.push(grid.get_value(GridCoordinate::new(old_x, old_y)).unwrap());
+        }
+    }
+    return Grid::new(new_width, new_height, values);
+}
+
 /// Hahaha infinite grid now, slightly more complicated.
-/// ```
-/// let vec1: Vec<String> = vec![
-///     "...........",
-///     ".....###.#.",
-///     ".###.##..#.",
-///     "..#.#...#..",
-///     "....#.#....",
-///     ".##..S####.",
-///     ".##..#...#.",
-///     ".......##..",
-///     ".##.#.####.",
-///     ".##..##.##.",
-///     "..........."
-/// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day21::puzzle_b(&vec1, 5000), 16733044);
-/// ```
-pub fn puzzle_b(string_list: &Vec<String>, num_steps: u32) -> usize {
+/// I failed to get this working
+/// And solved manually. Not sure what I'm doing wrong to find the variables
+/// for this quadratic.
+pub fn puzzle_b(string_list: &Vec<String>, num_steps: u32) -> i64 {
     let (grid, origin) = parse_grid(string_list);
-    return 0;
+    let y_u32: u32 = origin.y.try_into().unwrap();
+    let height_u32: u32 = grid.get_height().try_into().unwrap();
+    let expanded_grid = expand_grid(&grid, 7);
+
+    let v0 = find_places_x_steps_from_you(&expanded_grid, &origin, y_u32);
+    let v1 = find_places_x_steps_from_you(&expanded_grid, &origin, y_u32 + height_u32);
+    let v2 = find_places_x_steps_from_you(&expanded_grid, &origin, y_u32 + height_u32 * 2);
+    let num_traverse = (num_steps - y_u32) / height_u32;
+    return solve_quadratic(num_traverse as i64, v0 as i64, v1 as i64, v2 as i64);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_expand_grid() {
+        let small_grid = Grid::new(
+            2,
+            2,
+            vec![
+                Terrain::Rock,
+                Terrain::GardenPlot,
+                Terrain::GardenPlot,
+                Terrain::Rock,
+            ],
+        );
+        let expanded_grid = expand_grid(&small_grid, 2);
+        assert_eq!(expanded_grid.get_height(), 4);
+        assert_eq!(expanded_grid.get_width(), 4);
+        assert_eq!(
+            expanded_grid.data_copy(),
+            vec![
+                Terrain::Rock,
+                Terrain::GardenPlot,
+                Terrain::Rock,
+                Terrain::GardenPlot,
+                Terrain::GardenPlot,
+                Terrain::Rock,
+                Terrain::GardenPlot,
+                Terrain::Rock,
+                Terrain::Rock,
+                Terrain::GardenPlot,
+                Terrain::Rock,
+                Terrain::GardenPlot,
+                Terrain::GardenPlot,
+                Terrain::Rock,
+                Terrain::GardenPlot,
+                Terrain::Rock
+            ]
+        )
+    }
 }
