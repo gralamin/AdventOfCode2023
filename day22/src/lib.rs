@@ -7,7 +7,7 @@ use std::hash::{Hash, Hasher};
 
 pub use filelib::load_no_blanks;
 
-use petgraph::dot::Dot;
+// use petgraph::dot::Dot;
 use petgraph::graph::Graph;
 use petgraph::graph::NodeIndex;
 use petgraph::Undirected;
@@ -256,8 +256,8 @@ fn build_brick_graph(bricks: &Vec<Brick>) -> BrickGraph {
     let mut seen_edges: HashSet<(Brick, Brick)> = HashSet::new();
 
     for brick in bricks.clone() {
-        let index = graph.add_node(brick);
-        brick_map.insert(brick, index);
+        let index = graph.add_node(brick.clone());
+        brick_map.insert(brick.clone(), index);
     }
     for brick in bricks.clone() {
         if brick.front.z == GROUND_Z + 1 || brick.back.z == GROUND_Z + 1 {
@@ -267,16 +267,16 @@ fn build_brick_graph(bricks: &Vec<Brick>) -> BrickGraph {
         let index = brick_map.get(&brick).unwrap();
 
         for other_brick in bricks.clone() {
-            if seen_edges.contains(&(other_brick, brick)) {
+            if seen_edges.contains(&(other_brick.clone(), brick.clone())) {
                 continue;
             }
             if brick == other_brick {
                 continue;
             }
             if other_brick.does_support(&brick) {
-                let other_index = brick_map.get(&other_brick).unwrap();
+                let other_index = brick_map.get(&other_brick.clone()).unwrap();
                 graph.add_edge(*index, *other_index, 1);
-                seen_edges.insert((brick, other_brick));
+                seen_edges.insert((brick.clone(), other_brick.clone()));
             }
         }
     }
@@ -310,6 +310,8 @@ fn find_safe_to_disintegrate(graph: &BrickGraph) -> u32 {
         .filter(|n| {
             // for each neighbor, check if it has multiple supports. If it does, I can go.
             //println!("Checking neighbors of {}", graph[*n].debug_id);
+
+            // Get number of supports
             for m in graph.neighbors(*n) {
                 if !graph[*n].does_support(&graph[m]) {
                     continue;
@@ -363,23 +365,6 @@ pub fn puzzle_a(string_list: &Vec<String>) -> u32 {
     return find_safe_to_disintegrate(&graph);
 }
 
-/*
-fn directed_graph(graph: &Graph) -> Graph {
-    let g = Graph::new();
-
-    return g;
-}
-
-type Cache = HashMap<NodeIndex, usize>;
-fn get_support_structure(graph: &Graph, n: &NodeIndex, cache: Cache) -> usize {
-    if cache.contains(n) {
-        return cache.get(n).unwrap();
-    }
-    let mut num_supported = 0;
-
-}
-*/
-
 /// Toplogical sort, and take the sum of everything but the last element.
 /// ```
 /// let vec1: Vec<String> = vec![
@@ -391,7 +376,7 @@ fn get_support_structure(graph: &Graph, n: &NodeIndex, cache: Cache) -> usize {
 ///     "0,1,6~2,1,6",
 ///     "1,1,8~1,1,9"
 /// ].iter().map(|s| s.to_string()).collect();
-/// //assert_eq!(day22::puzzle_b(&vec1), 7);
+/// assert_eq!(day22::puzzle_b(&vec1), 7);
 /// ```
 pub fn puzzle_b(string_list: &Vec<String>) -> usize {
     let bricks = parse_bricks(string_list);
@@ -399,12 +384,56 @@ pub fn puzzle_b(string_list: &Vec<String>) -> usize {
     let fallen = simulate_fall(&bricks);
     //println!("Starting graph");
     let graph = build_brick_graph(&fallen);
-    return 0;
-    /*
-    let support_graph = directed_graph(&graph);
-    let mut cache = Cache::new();
-    return graph.node_indices().map(|n| get_support_structure(&graph, n, &cache).len()).sum()
-    */
+    let mut sum = 0;
+
+    for n in graph.node_indices() {
+        let my_supports = get_direct_supports(&graph, &n);
+        if my_supports.is_empty() {
+            continue;
+        }
+
+        let mut queue: VecDeque<NodeIndex> = VecDeque::new();
+        queue.push_back(n);
+        let mut fallen_indexes: Vec<NodeIndex> = vec![];
+        while let Some(m) = queue.pop_front() {
+            fallen_indexes.push(m);
+            let m_supports = get_direct_supports(&graph, &m);
+
+            // Check that all bricks supported by m have fallen.
+            for a in m_supports {
+                let supports = get_supported_by(&graph, &a);
+                if supports.len() > 0 && supports.iter().all(|x| fallen_indexes.contains(x)) {
+                    queue.push_back(a);
+                }
+            }
+        }
+
+        if fallen_indexes.len() > 0 {
+            sum += fallen_indexes.len() - 1;
+        }
+    }
+
+    return sum;
+}
+
+fn get_direct_supports(graph: &BrickGraph, node: &NodeIndex) -> Vec<NodeIndex> {
+    let mut supports = vec![];
+    for n in graph.neighbors(*node) {
+        if graph[*node].does_support(&graph[n]) {
+            supports.push(n.clone());
+        }
+    }
+    return supports;
+}
+
+fn get_supported_by(graph: &BrickGraph, node: &NodeIndex) -> Vec<NodeIndex> {
+    let mut supports = vec![];
+    for n in graph.neighbors(*node) {
+        if graph[n].does_support(&graph[*node]) {
+            supports.push(n.clone());
+        }
+    }
+    return supports;
 }
 
 #[cfg(test)]
