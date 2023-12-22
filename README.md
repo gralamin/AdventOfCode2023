@@ -5,7 +5,7 @@ Advent of Code for 2023 - https://adventofcode.com/2023
 
 Per day, remember to:
 ```
-export day=day24
+export day=day25
 cargo new $day
 cp day01/Makefile $day/
 cp -r template/* $day/
