@@ -9,6 +9,8 @@ use gridlib::Grid;
 use gridlib::GridCoordinate;
 use gridlib::GridTraversable;
 
+const DEBUG: bool = false;
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum Terrain {
     Path,
@@ -16,23 +18,38 @@ enum Terrain {
     Slope(Direction),
 }
 
-fn parse_terrain(input: &Vec<String>) -> Grid<Terrain> {
+fn parse_terrain(input: &Vec<String>, with_slope: bool) -> Grid<Terrain> {
     let width = input[0].len();
     let height = input.len();
     let mut values = vec![];
 
     for line in input {
         for c in line.chars() {
-            let v = match c {
-                '.' => Terrain::Path,
-                '#' => Terrain::Forest,
-                '>' => Terrain::Slope(Direction::EAST),
-                '^' => Terrain::Slope(Direction::NORTH),
-                '<' => Terrain::Slope(Direction::WEST),
-                'V' => Terrain::Slope(Direction::SOUTH),
-                'v' => Terrain::Slope(Direction::SOUTH),
-                _ => panic!("error, '{}'", c),
-            };
+            let v;
+            if with_slope {
+                v = match c {
+                    '.' => Terrain::Path,
+                    '#' => Terrain::Forest,
+                    '>' => Terrain::Slope(Direction::EAST),
+                    '^' => Terrain::Slope(Direction::NORTH),
+                    '<' => Terrain::Slope(Direction::WEST),
+                    'V' => Terrain::Slope(Direction::SOUTH),
+                    'v' => Terrain::Slope(Direction::SOUTH),
+                    _ => panic!("error, '{}'", c),
+                };
+            } else {
+                v = match c {
+                    '.' => Terrain::Path,
+                    '#' => Terrain::Forest,
+                    '>' => Terrain::Path,
+                    '^' => Terrain::Path,
+                    '<' => Terrain::Path,
+                    'V' => Terrain::Path,
+                    'v' => Terrain::Path,
+                    _ => panic!("error, '{}'", c),
+                };
+            }
+
             values.push(v);
         }
     }
@@ -110,17 +127,14 @@ fn find_longest_path(
             continue;
         }
 
-        if state.distance < dist[index] {
+        if state.distance > dist[index] {
             // We have a longer path to here, throw this out.
-            continue;
-        }
-
-        dist[index] = state.distance;
-
-        if state.cur_location == *end {
-            final_path = state.previous_steps.clone();
-            final_path.push(state.cur_location);
-            continue;
+            dist[index] = state.distance;
+            if state.cur_location == *end {
+                final_path = state.previous_steps.clone();
+                final_path.push(state.cur_location);
+                continue;
+            }
         }
 
         let cur_terrain = grid.get_value(state.cur_location).unwrap();
@@ -211,20 +225,80 @@ fn find_longest_path(
 /// assert_eq!(day23::puzzle_a(&vec1), 94);
 /// ```
 pub fn puzzle_a(string_list: &Vec<String>) -> usize {
-    let grid = parse_terrain(string_list);
+    let grid = parse_terrain(string_list, true);
     let entrance = find_entrance(&grid);
     let exit = find_exit(&grid);
     // We don't include The start square for some reason.
     return find_longest_path(&grid, &entrance, &exit).len() - 1;
 }
 
-/// Foo
+fn print_path(grid: &Grid<Terrain>, path: &Vec<GridCoordinate>) {
+    if !DEBUG {
+        return;
+    }
+
+    let mut cur_y = 0;
+    for c in grid.coord_iter() {
+        if c.y != cur_y {
+            cur_y = c.y;
+            println!("");
+        }
+        let v = grid.get_value(c).unwrap();
+        if path.contains(&c) {
+            print!("O");
+        } else {
+            match v {
+                Terrain::Path => print!("."),
+                Terrain::Forest => print!("#"),
+                Terrain::Slope(d) => match d {
+                    Direction::NORTH => print!("^"),
+                    Direction::EAST => print!(">"),
+                    Direction::SOUTH => print!("v"),
+                    Direction::WEST => print!("<"),
+                    _ => panic!("???"),
+                },
+            }
+        }
+    }
+}
+
+/// Ignore slopes.
 /// ```
 /// let vec1: Vec<String> = vec![
-///     "foo"
+///     "#.#####################",
+///     "#.......#########...###",
+///     "#######.#########.#.###",
+///     "###.....#.>.>.###.#.###",
+///     "###v#####.#v#.###.#.###",
+///     "###.>...#.#.#.....#...#",
+///     "###v###.#.#.#########.#",
+///     "###...#.#.#.......#...#",
+///     "#####.#.#.#######.#.###",
+///     "#.....#.#.#.......#...#",
+///     "#.#####.#.#.#########v#",
+///     "#.#...#...#...###...>.#",
+///     "#.#.#v#######v###.###v#",
+///     "#...#.>.#...>.>.#.###.#",
+///     "#####v#.#.###v#.#.###.#",
+///     "#.....#...#...#.#.#...#",
+///     "#.#########.###.#.#.###",
+///     "#...###...#...#...#.###",
+///     "###.###.#.###v#####v###",
+///     "#...#...#.#.>.>.#.>.###",
+///     "#.###.###.#.###.#.#v###",
+///     "#.....###...###...#...#",
+///     "#####################.#"
 /// ].iter().map(|s| s.to_string()).collect();
-/// assert_eq!(day23::puzzle_b(&vec1), 0);
+/// assert_eq!(day23::puzzle_b(&vec1), 154);
 /// ```
-pub fn puzzle_b(string_list: &Vec<String>) -> u32 {
-    return 0;
+pub fn puzzle_b(string_list: &Vec<String>) -> usize {
+    let grid = parse_terrain(string_list, false);
+    let entrance = find_entrance(&grid);
+    let exit = find_exit(&grid);
+    let path = find_longest_path(&grid, &entrance, &exit);
+
+    print_path(&grid, &path);
+
+    // We don't include The start square for some reason.
+    return path.len() - 1;
 }
